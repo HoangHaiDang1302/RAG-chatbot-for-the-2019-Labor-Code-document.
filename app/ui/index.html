@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚖️ Trợ Lý Pháp Lý AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-card: rgba(30, 30, 50, 0.7);
+            --accent: #6c5ce7;
+            --accent-light: #a29bfe;
+            --accent-glow: rgba(108, 92, 231, 0.3);
+            --text-primary: #e8e8f0;
+            --text-secondary: #8888aa;
+            --user-bubble: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            --bot-bubble: rgba(40, 40, 65, 0.8);
+            --border: rgba(108, 92, 231, 0.2);
+            --success: #00cec9;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* === HEADER === */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            backdrop-filter: blur(20px);
+            position: relative;
+            z-index: 10;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        }
+
+        .header-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--user-bubble);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .header-info h1 {
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        .header-info p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* === CHAT AREA === */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            scroll-behavior: smooth;
+        }
+
+        .chat-container::-webkit-scrollbar { width: 6px; }
+        .chat-container::-webkit-scrollbar-track { background: transparent; }
+        .chat-container::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        /* === MESSAGE BUBBLES === */
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 80%;
+            animation: fadeSlideIn 0.4s ease-out;
+        }
+
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message.bot { align-self: flex-start; }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 4px;
+        }
+
+        .message.user .avatar {
+            background: var(--user-bubble);
+            box-shadow: 0 3px 12px var(--accent-glow);
+        }
+
+        .message.bot .avatar {
+            background: linear-gradient(135deg, #00cec9, #55efc4);
+            box-shadow: 0 3px 12px rgba(0, 206, 201, 0.3);
+        }
+
+        .bubble {
+            padding: 14px 18px;
+            border-radius: 16px;
+            line-height: 1.6;
+            font-size: 14px;
+            position: relative;
+        }
+
+        .message.user .bubble {
+            background: var(--user-bubble);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.bot .bubble {
+            background: var(--bot-bubble);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+            backdrop-filter: blur(10px);
+        }
+
+        .message.bot .bubble strong { color: var(--accent-light); }
+
+        /* === TYPING INDICATOR === */
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            gap: 12px;
+            animation: fadeSlideIn 0.3s ease-out;
+        }
+
+        .typing-indicator.active { display: flex; }
+
+        .typing-dots {
+            padding: 14px 20px;
+            background: var(--bot-bubble);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-light);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite;
+        }
+
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-8px); opacity: 1; }
+        }
+
+        /* === WELCOME MESSAGE === */
+        .welcome {
+            text-align: center;
+            padding: 60px 20px;
+            animation: fadeSlideIn 0.6s ease-out;
+        }
+
+        .welcome-icon {
+            font-size: 56px;
+            margin-bottom: 16px;
+        }
+
+        .welcome h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--accent-light), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .welcome p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            max-width: 400px;
+            margin: 0 auto 24px;
+            line-height: 1.6;
+        }
+
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .suggestion-chip {
+            padding: 10px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .suggestion-chip:hover {
+            border-color: var(--accent);
+            color: var(--accent-light);
+            background: rgba(108, 92, 231, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        /* === INPUT AREA === */
+        .input-area {
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            position: relative;
+        }
+
+        .input-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        #userInput {
+            flex: 1;
+            padding: 14px 20px;
+            background: rgba(15, 15, 26, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        #userInput:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        #userInput::placeholder { color: var(--text-secondary); }
+
+        #sendBtn {
+            width: 48px;
+            height: 48px;
+            background: var(--user-bubble);
+            border: none;
+            border-radius: 14px;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        #sendBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px var(--accent-glow);
+        }
+
+        #sendBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 600px) {
+            .message { max-width: 90%; }
+            .suggestions { flex-direction: column; }
+            .header { padding: 12px 16px; }
+            .chat-container { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-icon">⚖️</div>
+        <div class="header-info">
+            <h1>Trợ Lý Pháp Lý AI</h1>
+            <p><span class="status-dot"></span>Bộ Luật Lao Động 2019 · Powered by Groq</p>
+        </div>
+    </div>
+
+    <!-- CHAT AREA -->
+    <div class="chat-container" id="chatContainer">
+        <div class="welcome" id="welcomeScreen">
+            <div class="welcome-icon">⚖️</div>
+            <h2>Xin chào, tôi là Luật Sư Ảo!</h2>
+            <p>Tôi có thể tra cứu và giải đáp mọi thắc mắc của bạn về Bộ Luật Lao Động 2019. Hãy đặt câu hỏi bên dưới!</p>
+            <div class="suggestions">
+                <div class="suggestion-chip" onclick="askSuggestion(this)">Nghỉ thai sản được bao lâu?</div>
+                <div class="suggestion-chip" onclick="askSuggestion(this)">Làm thêm giờ ngày lễ trả lương thế nào?</div>
+                <div class="suggestion-chip" onclick="askSuggestion(this)">Thử việc tối đa bao nhiêu ngày?</div>
+            </div>
+        </div>
+
+        <!-- Typing indicator -->
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="avatar" style="background: linear-gradient(135deg, #00cec9, #55efc4);">🤖</div>
+            <div class="typing-dots">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- INPUT -->
+    <div class="input-area">
+        <div class="input-wrapper">
+            <input type="text" id="userInput" placeholder="Hỏi về Luật Lao Động 2019..." autocomplete="off" />
+            <button id="sendBtn" onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000/api/chat";
+        let chatHistory = [];
+
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const welcomeScreen = document.getElementById('welcomeScreen');
+
+        // Gõ Enter = Gửi
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Click gợi ý
+        function askSuggestion(el) {
+            userInput.value = el.textContent;
+            sendMessage();
+        }
+
+        // Thêm bong bóng chat
+        function addMessage(role, content) {
+            if (welcomeScreen) welcomeScreen.style.display = 'none';
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${role}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.textContent = role === 'user' ? '👤' : '🤖';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.innerHTML = formatText(content);
+
+            msgDiv.appendChild(avatar);
+            msgDiv.appendChild(bubble);
+
+            // Chèn TRƯỚC typing indicator
+            chatContainer.insertBefore(msgDiv, typingIndicator);
+            scrollToBottom();
+        }
+
+        // Format text thô thành HTML dễ đọc
+        function formatText(text) {
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
+        }
+
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // GỬI TIN NHẮN
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // Vô hiệu hoá nút gửi
+            sendBtn.disabled = true;
+            userInput.value = '';
+
+            // Hiển thị tin nhắn người dùng
+            addMessage('user', text);
+
+            // Hiện animation "đang gõ..."
+            typingIndicator.classList.add('active');
+            scrollToBottom();
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: text,
+                        chat_history: chatHistory
+                    })
+                });
+
+                const data = await response.json();
+
+                // Ẩn animation
+                typingIndicator.classList.remove('active');
+
+                // Hiển thị câu trả lời
+                addMessage('bot', data.answer);
+
+                // Cập nhật lịch sử
+                chatHistory.push({ role: 'user', content: text });
+                chatHistory.push({ role: 'assistant', content: data.answer });
+
+            } catch (error) {
+                typingIndicator.classList.remove('active');
+                addMessage('bot', '❌ Không kết nối được tới Server. Hãy chắc chắn FastAPI đang chạy (`uvicorn app.main:app --reload`).');
+            }
+
+            sendBtn.disabled = false;
+            userInput.focus();
+        }
+    </script>
+</body>
+</html>

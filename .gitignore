@@ -1,0 +1,18 @@
+# Môi trường ảo (Virtual Environments)
+venv/
+.env
+__pycache__/
+*.pyc
+
+# Dữ liệu cục bộ (Không nên đẩy lên git)
+data/raw/
+data/processed/
+data/vector_store/
+
+# IDE
+.vscode/
+.idea/
+
+# File tạm, logs
+*.log
+.DS_Store
