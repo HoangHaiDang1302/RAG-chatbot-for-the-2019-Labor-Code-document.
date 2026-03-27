@@ -16,3 +16,4 @@ data/vector_store/
 # File tạm, logs
 *.log
 .DS_Store
+checklist.md

@@ -155,6 +155,17 @@
         }
         .header-info h1 { font-size: 15px; font-weight: 600; }
         .header-info p { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+        .scope-banner {
+            margin: 14px 24px 0;
+            padding: 10px 14px;
+            background: rgba(108, 92, 231, 0.12);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .scope-banner strong { color: var(--accent-light); }
         .status-dot {
             width: 7px; height: 7px;
             background: var(--success);
@@ -339,11 +350,16 @@
             </div>
         </div>
 
+        <div class="scope-banner">
+            <strong>Pham vi:</strong> chatbot chi phuc vu hoi dap ve <strong>Bo Luat Lao Dong Viet Nam 2019</strong>.
+            Day la cong cu tham khao, khong phai tu van phap ly chuyen nghiep.
+        </div>
+
         <div class="chat-container" id="chatContainer">
             <div class="welcome" id="welcomeScreen">
                 <div class="welcome-icon">⚖️</div>
                 <h2>Xin chào, tôi là Luật Sư Ảo!</h2>
-                <p>Tra cứu và giải đáp Bộ Luật Lao Động 2019. Hãy đặt câu hỏi bên dưới!</p>
+                <p>Tra cứu và giải đáp Bộ Luật Lao Động 2019, kèm trich dan tu tai lieu. Nếu câu hỏi ngoài phạm vi này, bot sẽ nói rõ.</p>
                 <div class="suggestions">
                     <div class="suggestion-chip" onclick="askSuggestion(this)">Nghỉ thai sản được bao lâu?</div>
                     <div class="suggestion-chip" onclick="askSuggestion(this)">Làm thêm giờ ngày lễ trả lương thế nào?</div>

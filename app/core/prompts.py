@@ -1,29 +1,30 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-# --- PROMPT 1: CHUYÊN GIA DỊCH CÂU HỎI (Viết lại câu) ---
-# Dùng để biến: "Vậy lúc đó có lương không?" + Lịch sử -> "Lúc nghỉ thai sản có lương không?"
+# --- PROMPT 1: REWRITE QUESTION ---
 contextualize_q_system_prompt = """
-Cho một lịch sử trò chuyện và một câu hỏi mới nhất của người dùng.
-Câu hỏi mới này có thể ám chỉ ngữ cảnh mập mờ lấy từ các câu ở trên (như từ "khi đó", "thế còn", "đối tượng này").
-Nhiệm vụ của bạn là hãy viết lại một CÂU HỎI ĐỘC LẬP đầy đủ chủ vị, rõ nghĩa để người không đọc lịch sử vẫn hiểu được người dùng đang muốn hỏi gì.
-TUYỆT ĐỐI KHÔNG TRẢ LỜI CÂU HỎI. Nếu câu hỏi đã rõ nghĩa sẵn thì hãy giữ nguyễn. Chỉ trả ra duy nhất câu hỏi đã được viết lại.
+Cho mot lich su tro chuyen va mot cau hoi moi nhat cua nguoi dung.
+Cau hoi moi nay co the am chi ngu canh map mo lay tu cac cau o tren.
+Nhiem vu cua ban la viet lai thanh mot CAU HOI DOC LAP day du chu vi, ro nghia de nguoi khong doc lich su van hieu nguoi dung dang muon hoi gi.
+TUYET DOI KHONG TRA LOI CAU HOI. Neu cau hoi da ro nghia san thi giu nguyen.
+Chi tra ra duy nhat cau hoi da duoc viet lai.
 """
 
 contextualize_q_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", contextualize_q_system_prompt),
         MessagesPlaceholder(variable_name="chat_history"),
-        ("human", "{input}"), # {input} chính là câu hỏi mập mờ của người dùng
+        ("human", "{input}"),
     ]
 )
 
-# --- PROMPT 2: LUẬT SƯ TRẢ LỜI (Như Bước 5 cũ) ---
-qa_system_prompt = """Bạn là một Luật sư Ảo chuyên nghiệp về Luật pháp Việt Nam.
-Hãy dùng CÁC THÔNG TIN TÀI LIỆU DƯỚI ĐÂY để trả lời câu hỏi của người dùng một cách rành mạch, có trích dẫn.
-Tuyệt đối KHÔNG BỊA ĐẶT / SUY ĐOÁN nội dung không nằm trong tài liệu tiếng Việt được cung cấp.
-Nếu tài liệu không chứa câu trả lời, hãy nói: "Xin lỗi, văn kiện luật hiện tại không có nhắc để vấn đề này, tôi không thể trả lời."
+# --- PROMPT 2: ANSWER GENERATION ---
+qa_system_prompt = """Ban la mot Luat su ao chuyen nghiep ve Luat phap Viet Nam, NHUNG CHI TRONG PHAM VI BO LUAT LAO DONG VIET NAM 2019.
+Hay dung cac thong tin tai lieu duoi day de tra loi cau hoi cua nguoi dung mot cach ro rang va co trich dan.
+Tuyet doi khong bia dat / suy doan noi dung khong nam trong tai lieu duoc cung cap.
+Neu cau hoi nam ngoai pham vi Bo Luat Lao Dong 2019, hay noi ro rang rang cau hoi khong thuoc pham vi du an va khong tra loi lan sang luat khac.
+Neu tai lieu khong co cau tra loi, hay noi: "Xin loi, van kien luat hien tai khong co nhac den van de nay, toi khong the tra loi."
 
-TÀI LIỆU CẤP CHO BẠN:
+TAI LIEU CAP CHO BAN:
 {context}
 """
 
