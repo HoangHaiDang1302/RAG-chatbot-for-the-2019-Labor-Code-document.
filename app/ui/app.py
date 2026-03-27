@@ -1,44 +1,48 @@
-import streamlit as st
 import os
 import sys
 
-# Khai báo đường dẫn để import lấy ruột của Chatbot
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
-from app.services.generator import generate_answer
+import streamlit as st
 
-# Cài đặt giao diện của trang Web
+current_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.abspath(os.path.join(current_dir, "..", ".."))
+
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
+from app.services.generator import generate_answer_with_sources
+
 st.set_page_config(page_title="Trợ Lý Pháp Lý AI", page_icon="⚖️", layout="centered")
-st.title("⚖️ Trợ Lý Pháp Lý Ảo (Bộ Luật LĐ 2019)")
-st.markdown("Hỏi tôi bất cứ câu nào về quyền lợi người lao động! (Chạy bằng Siêu Tốc Groq)")
+st.title("⚖️ Trợ Lý Pháp Lý AI")
+st.markdown("Hỏi đáp về Bộ Luật Lao Động 2019 với nguồn tham khảo đi kèm.")
 
-# Khởi tạo kho lưu trữ tin nhắn ảo (phiên Chat của người dùng)
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Trưng bày lại các tin nhắn cũ mỗi khi có tin nhắn mới (vì Web cứ reload liên tục)
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        if message["role"] == "assistant" and message.get("sources"):
+            with st.expander("Nguồn tham khảo"):
+                for source in message["sources"]:
+                    st.markdown(f"**{source['citation']}**  \n{source['snippet']}")
 
-# Hộp tin nhắn để gõ (Prompt nhập của Người dùng)
-user_input = st.chat_input("Ví dụ: Thời gian làm thêm giờ vào ngày cuối tuần tính lương như thế nào?")
+user_input = st.chat_input("Hỏi về Luật Lao Động 2019...")
 
 if user_input:
-    # 1. Hiển thị tin nhắn người dùng lên màn hình Chat
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # 2. Để cho RAG bắt đầu đi bới móc luật và dùng LLM trả lời lại
     with st.chat_message("assistant"):
-        # Spinner quay quay để hiện thi cho người dùng biết AI đang lục não
-        with st.spinner("Đang lặn xuống Kho Lục Luật, rọi Model AI Groq đằng kia... ⏳"):
-            # Gọi ngay cỗ máy RAG mà bạn cực khổ ghép từ nãy giờ ở Bước 5
-            coca_cola = generate_answer(user_input)
-            
-            # Ghi lời khuyên của luật sư Trí Tuệ Nhân Tạo ra màn hình!
-            st.markdown(coca_cola)
-            
-    # 3. Lưu câu trả lời vào bộ nhớ RAM trang web để không biến mất
-    st.session_state.messages.append({"role": "assistant", "content": coca_cola})
+        with st.spinner("Đang tìm nguồn và tạo câu trả lời..."):
+            result = generate_answer_with_sources(user_input)
+            answer = result["answer"]
+            sources = result["sources"]
 
+            st.markdown(answer)
+            if sources:
+                with st.expander("Nguồn tham khảo"):
+                    for source in sources:
+                        st.markdown(f"**{source['citation']}**  \n{source['snippet']}")
+
+    st.session_state.messages.append({"role": "assistant", "content": answer, "sources": sources})

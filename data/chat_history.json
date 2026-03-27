@@ -1,1 +1,16 @@
-{}
+{
+  "e38abf49": {
+    "title": "Nghỉ thai sản được bao lâu?",
+    "created_at": "2026-03-27 10:53",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Nghỉ thai sản được bao lâu?"
+      },
+      {
+        "role": "assistant",
+        "content": "Theo Điều 139 của Bộ luật Lao động 2019, lao động nữ được nghỉ thai sản trước và sau khi sinh con là 06 tháng."
+      }
+    ]
+  }
+}

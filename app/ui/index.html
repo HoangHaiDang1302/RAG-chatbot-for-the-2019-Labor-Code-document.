@@ -32,7 +32,6 @@
             overflow: hidden;
         }
 
-        /* === SIDEBAR === */
         .sidebar {
             width: 280px;
             background: var(--bg-sidebar);
@@ -127,7 +126,6 @@
             font-size: 13px;
         }
 
-        /* === MAIN AREA === */
         .main { flex: 1; display: flex; flex-direction: column; }
         .header {
             background: var(--bg-secondary);
@@ -176,7 +174,6 @@
         }
         @keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
 
-        /* === CHAT === */
         .chat-container {
             flex: 1;
             overflow-y: auto;
@@ -222,6 +219,11 @@
             line-height: 1.6;
             font-size: 13.5px;
         }
+        .message.bot .bubble {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
         .message.user .bubble {
             background: var(--user-bubble);
             color: #fff;
@@ -233,6 +235,35 @@
             border-bottom-left-radius: 4px;
         }
         .message.bot .bubble strong { color: var(--accent-light); }
+        .sources {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 4px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            font-size: 11.5px;
+            color: var(--text-secondary);
+        }
+        .sources-title {
+            color: var(--accent-light);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .source-item {
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.03);
+            line-height: 1.45;
+        }
+        .source-item strong {
+            color: var(--text-primary);
+            display: block;
+            margin-bottom: 2px;
+        }
         .typing-indicator { display:none; align-self:flex-start; gap:10px; }
         .typing-indicator.active { display:flex; animation:fadeIn .3s ease-out; }
         .typing-dots {
@@ -253,7 +284,6 @@
         .typing-dots span:nth-child(3) { animation-delay:.4s; }
         @keyframes bounce { 0%,60%,100%{transform:translateY(0);opacity:.4;} 30%{transform:translateY(-7px);opacity:1;} }
 
-        /* WELCOME */
         .welcome { text-align:center; padding:50px 20px; }
         .welcome-icon { font-size:50px; margin-bottom:14px; }
         .welcome h2 {
@@ -280,7 +310,6 @@
             transform: translateY(-1px);
         }
 
-        /* INPUT */
         .input-area {
             padding: 14px 20px;
             background: var(--bg-secondary);
@@ -328,8 +357,6 @@
     </style>
 </head>
 <body>
-
-    <!-- SIDEBAR -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h2>💬 Lịch sử hội thoại</h2>
@@ -340,7 +367,6 @@
         </div>
     </div>
 
-    <!-- MAIN -->
     <div class="main">
         <div class="header">
             <div class="header-icon">⚖️</div>
@@ -351,15 +377,15 @@
         </div>
 
         <div class="scope-banner">
-            <strong>Pham vi:</strong> chatbot chi phuc vu hoi dap ve <strong>Bo Luat Lao Dong Viet Nam 2019</strong>.
-            Day la cong cu tham khao, khong phai tu van phap ly chuyen nghiep.
+            <strong>Phạm vi:</strong> chatbot chỉ phục vụ hỏi đáp về <strong>Bộ Luật Lao Động Việt Nam 2019</strong>.
+            Đây là công cụ tham khảo, không phải tư vấn pháp lý chuyên nghiệp.
         </div>
 
         <div class="chat-container" id="chatContainer">
             <div class="welcome" id="welcomeScreen">
                 <div class="welcome-icon">⚖️</div>
                 <h2>Xin chào, tôi là Luật Sư Ảo!</h2>
-                <p>Tra cứu và giải đáp Bộ Luật Lao Động 2019, kèm trich dan tu tai lieu. Nếu câu hỏi ngoài phạm vi này, bot sẽ nói rõ.</p>
+                <p>Tra cứu và giải đáp Bộ Luật Lao Động 2019, kèm trích dẫn từ tài liệu. Nếu câu hỏi ngoài phạm vi này, bot sẽ nói rõ.</p>
                 <div class="suggestions">
                     <div class="suggestion-chip" onclick="askSuggestion(this)">Nghỉ thai sản được bao lâu?</div>
                     <div class="suggestion-chip" onclick="askSuggestion(this)">Làm thêm giờ ngày lễ trả lương thế nào?</div>
@@ -391,37 +417,67 @@
     const typingIndicator = document.getElementById('typingIndicator');
     const welcomeScreen = document.getElementById('welcomeScreen');
     const sessionList = document.getElementById('sessionList');
-    const emptyState = document.getElementById('emptyState');
 
-    // Khởi động: Load danh sách lịch sử
     loadSessions();
 
     userInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
     });
 
-    function askSuggestion(el) { userInput.value = el.textContent; sendMessage(); }
+    function askSuggestion(el) {
+        userInput.value = el.textContent;
+        sendMessage();
+    }
 
-    function addMessage(role, content) {
+    function addMessage(role, content, sources = []) {
         if (welcomeScreen) welcomeScreen.style.display = 'none';
         const msg = document.createElement('div');
         msg.className = `message ${role}`;
+
         const av = document.createElement('div');
         av.className = 'avatar';
         av.textContent = role === 'user' ? '👤' : '🤖';
+
         const bub = document.createElement('div');
         bub.className = 'bubble';
         bub.innerHTML = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+
+        if (role === 'bot' && sources.length > 0) {
+            const sourceWrap = document.createElement('div');
+            sourceWrap.className = 'sources';
+            const title = document.createElement('div');
+            title.className = 'sources-title';
+            title.textContent = 'Nguồn tham khảo';
+            sourceWrap.appendChild(title);
+
+            sources.forEach((source) => {
+                const item = document.createElement('div');
+                item.className = 'source-item';
+                const sourceTitle = document.createElement('strong');
+                sourceTitle.textContent = source.citation;
+                const sourceSnippet = document.createElement('div');
+                sourceSnippet.textContent = source.snippet;
+                item.appendChild(sourceTitle);
+                item.appendChild(sourceSnippet);
+                sourceWrap.appendChild(item);
+            });
+
+            bub.appendChild(sourceWrap);
+        }
+
         msg.appendChild(av);
         msg.appendChild(bub);
         chatContainer.insertBefore(msg, typingIndicator);
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    // ---- GỬI TIN NHẮN ----
     async function sendMessage() {
         const text = userInput.value.trim();
         if (!text) return;
+
         sendBtn.disabled = true;
         userInput.value = '';
         addMessage('user', text);
@@ -440,34 +496,32 @@
             });
             const data = await res.json();
             typingIndicator.classList.remove('active');
-            addMessage('bot', data.answer);
+            addMessage('bot', data.answer, data.sources || []);
 
-            // Cập nhật session id (nếu là cuộc chat mới)
             currentSessionId = data.session_id;
             chatHistory.push({ role: 'user', content: text });
             chatHistory.push({ role: 'assistant', content: data.answer });
 
-            // Refresh sidebar
             loadSessions();
-        } catch(err) {
+        } catch (err) {
             typingIndicator.classList.remove('active');
             addMessage('bot', '❌ Không kết nối được Server.');
         }
+
         sendBtn.disabled = false;
         userInput.focus();
     }
 
-    // ---- LOAD DANH SÁCH PHIÊN ----
     async function loadSessions() {
         try {
             const res = await fetch(`${API}/api/sessions`);
             const sessions = await res.json();
-            
+
             if (sessions.length === 0) {
                 sessionList.innerHTML = '<div class="session-empty">Chưa có cuộc trò chuyện nào</div>';
                 return;
             }
-            
+
             sessionList.innerHTML = '';
             sessions.forEach(s => {
                 const div = document.createElement('div');
@@ -481,49 +535,43 @@
                 `;
                 sessionList.appendChild(div);
             });
-        } catch(err) { /* server chưa chạy */ }
+        } catch (err) {
+            // Server chưa chạy
+        }
     }
 
-    // ---- MỞ PHIÊN CŨ ----
     async function loadSession(sessionId) {
         try {
             const res = await fetch(`${API}/api/sessions/${sessionId}`);
             const data = await res.json();
-            
+
             currentSessionId = sessionId;
             chatHistory = [];
 
-            // Xóa chat cũ trên màn hình
             const msgs = chatContainer.querySelectorAll('.message, .welcome');
             msgs.forEach(m => m.remove());
 
-            // Đổ lại tin nhắn
             data.messages.forEach(msg => {
-                addMessage(msg.role === 'user' ? 'user' : 'bot', msg.content);
+                addMessage(msg.role === 'user' ? 'user' : 'bot', msg.content, msg.sources || []);
                 chatHistory.push(msg);
             });
 
-            // Highlight sidebar
             document.querySelectorAll('.session-item').forEach(el => el.classList.remove('active'));
-            event.target.closest('.session-item')?.classList.add('active');
             loadSessions();
-        } catch(err) {}
+        } catch (err) {}
     }
 
-    // ---- XÓA PHIÊN ----
     async function deleteSession(sessionId) {
         await fetch(`${API}/api/sessions/${sessionId}`, { method: 'DELETE' });
         if (currentSessionId === sessionId) newChat();
         loadSessions();
     }
 
-    // ---- CUỘC CHAT MỚI ----
     function newChat() {
         currentSessionId = null;
         chatHistory = [];
         const msgs = chatContainer.querySelectorAll('.message');
         msgs.forEach(m => m.remove());
-        // Hiện welcome
         if (welcomeScreen) welcomeScreen.style.display = '';
         loadSessions();
     }
