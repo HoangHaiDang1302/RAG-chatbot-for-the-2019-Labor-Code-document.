@@ -72,7 +72,7 @@ if __name__ == "__main__":
         print("🗑️ Đã cho Thùng rác DB cũ (vì không cùng ngôn ngữ Embedding)")
     
     docs = load_document(sample_file)
-    chunks = split_documents(docs, chunk_size=1000, chunk_overlap=200)
+    chunks = split_documents(docs)
     db = create_vector_db(chunks)
     
     print("\n✅ THÀNH CÔNG! Vector DB xịn xò chạy Offine Không Giới Hạn đã lên sàn!")

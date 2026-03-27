@@ -1,202 +1,189 @@
-# ⚖️ Trợ Lý Pháp Lý AI — RAG Chatbot
+# ⚖️ Trợ Lý Pháp Lý AI (RAG Chatbot)
 
-Ứng dụng Chatbot hỏi đáp thông minh về **Bộ Luật Lao Động Việt Nam 2019**, được xây dựng bằng kiến trúc **RAG (Retrieval-Augmented Generation)** kết hợp Hybrid Search, Reranking và Conversational Memory.
+Chatbot hỏi đáp về **Bộ Luật Lao Động Việt Nam 2019** theo kiến trúc **RAG (Retrieval-Augmented Generation)**.
+Hệ thống kết hợp:
+- Hybrid Retrieval (`Vector Search + BM25`)
+- Cross-Encoder Reranking
+- Router cho hội thoại nhiều lượt
+- FastAPI backend + Web UI
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green?logo=fastapi)
-![LangChain](https://img.shields.io/badge/LangChain-latest-orange)
-![Groq](https://img.shields.io/badge/Groq-Llama_3-purple)
+![LangChain](https://img.shields.io/badge/LangChain-RAG-orange)
+![ChromaDB](https://img.shields.io/badge/VectorDB-Chroma-5A67D8)
 
----
+## 1) Tính năng chính
 
-## ✨ Tính năng nổi bật
+- Truy xuất lai (`Hybrid Search`): semantic search + keyword search.
+- Rerank bằng `cross-encoder/ms-marco-MiniLM-L-6-v2` để tăng độ chính xác top-k.
+- Router hội thoại: tự nhận biết khi nào cần dùng ngữ cảnh chat history.
+- Sinh câu trả lời có ràng buộc theo tài liệu luật đã nạp.
+- Lưu lịch sử phiên chat qua file `data/chat_history.json`.
+- Có cả web UI (FastAPI serve HTML) và UI đơn giản qua Streamlit.
 
-| Tính năng | Mô tả |
-|-----------|-------|
-| 🔍 **Hybrid Search** | Kết hợp Vector Search (tìm theo ý nghĩa) + BM25 (tìm theo từ khóa chính xác) |
-| 📊 **LLM Reranker** | Dùng AI chấm điểm lại các kết quả tìm kiếm, chọn ra top chính xác nhất |
-| 🧠 **Conversational Memory** | Bot nhớ lịch sử hội thoại, hiểu được các câu hỏi ám chỉ ngữ cảnh trước đó |
-| ⚡ **Smart Router** | Tự động phát hiện câu hỏi có cần đọc lại lịch sử hay không, tối ưu latency |
-| 🚀 **FastAPI Backend** | API tốc độ cao, pre-load model vào RAM, hỗ trợ Swagger UI |
-| 🎨 **Giao diện Dark Mode** | Frontend HTML/CSS/JS xịn xò với glassmorphism, animation mượt mà |
-| 📝 **Auto Evaluation** | Bộ đánh giá chất lượng tự động (LLM-as-Judge) với 3 tiêu chí |
+## 2) Kiến trúc tổng quan
 
----
-
-## 🏗️ Kiến trúc hệ thống
-
-```
-User (Browser)
-     │
-     ▼
-┌─────────────────────────────────────────────────┐
-│                  FastAPI Server                  │
-│                  (app/main.py)                   │
-│  ┌───────────────────────────────────────────┐  │
-│  │             Generator Pipeline             │  │
-│  │                                            │  │
-│  │  ┌──────────┐    ┌─────────────────────┐  │  │
-│  │  │ Smart    │    │  Hybrid Retriever   │  │  │
-│  │  │ Router   │    │  ┌───────┬────────┐ │  │  │
-│  │  │ (8B)     │    │  │Vector │  BM25  │ │  │  │
-│  │  └────┬─────┘    │  │Search │ Search │ │  │  │
-│  │       │          │  └───┬───┴───┬────┘ │  │  │
-│  │  ┌────▼─────┐    │      │  Reranker  │ │  │  │
-│  │  │Viết lại  │    │      └─────┬──────┘ │  │  │
-│  │  │câu hỏi   │    └───────────┬─────────┘  │  │
-│  │  └──────────┘                │             │  │
-│  │              ┌───────────────▼──────┐      │  │
-│  │              │  Llama 3 (Groq API)  │      │  │
-│  │              │  Trả lời cuối cùng   │      │  │
-│  │              └──────────────────────┘      │  │
-│  └───────────────────────────────────────────┘  │
-│                       │                          │
-│              ┌────────▼────────┐                 │
-│              │    ChromaDB     │                 │
-│              │  (Vector Store) │                 │
-│              └─────────────────┘                 │
-└─────────────────────────────────────────────────┘
+```text
+User
+  -> FastAPI (/api/chat)
+     -> Router (YES/NO: có cần ngữ cảnh hội thoại không)
+        -> (nếu cần) Rewrite câu hỏi theo lịch sử chat
+     -> Hybrid Retriever
+        -> Vector Search (Chroma)
+        -> BM25
+        -> RRF Fusion
+        -> Cross-Encoder Rerank
+     -> LLM (Groq - Llama 3.x)
+  <- Final answer
 ```
 
----
+## 3) Cấu trúc thư mục
 
-## 📁 Cấu trúc thư mục
-
-```
-RAG-Chatbot/
-├── data/
-│   ├── raw/                        # Tài liệu gốc (PDF, DOCX, TXT...)
-│   ├── processed/                  # Dữ liệu đã qua tiền xử lý
-│   └── vector_store/               # ChromaDB lưu trữ cục bộ
-│
-├── app/
-│   ├── main.py                     # FastAPI Server + phục vụ Frontend
-│   ├── api/
-│   │   └── routes.py               # Định nghĩa API endpoints
-│   ├── core/
-│   │   ├── config.py               # Cấu hình ứng dụng
-│   │   └── prompts.py              # Prompt templates (Luật sư + Viết lại câu)
-│   ├── services/
-│   │   ├── document_loader.py      # Đọc file PDF/DOCX/TXT
-│   │   ├── text_splitter.py        # Chia nhỏ tài liệu thành chunks
-│   │   ├── embedding.py            # Tích hợp model nhúng
-│   │   ├── vector_db.py            # ChromaDB (có caching RAM)
-│   │   ├── retriever.py            # Vector search đơn giản
-│   │   ├── hybrid_retriever.py     # Hybrid Search + BM25 + Reranker
-│   │   └── generator.py            # RAG Pipeline (Router + Memory + Generation)
-│   └── ui/
-│       ├── index.html              # Giao diện Chat chính (Dark mode)
-│       └── chat_ui.py              # Giao diện Streamlit (bản đơn giản)
-│
-├── tests/
-│   ├── test_rag.py                 # Unit tests (Latency + Router)
-│   └── evaluate_rag.py             # Đánh giá chất lượng RAG (LLM-as-Judge)
-│
-├── notebooks/                      # Jupyter notebooks thử nghiệm
-├── .env                            # API Keys (GROQ_API_KEY)
-├── .env.example                    # Mẫu file .env
-├── .gitignore
-├── requirements.txt
-└── README.md
+```text
+RAG chatbot/
+├─ app/
+│  ├─ main.py
+│  ├─ core/
+│  │  └─ prompts.py
+│  ├─ services/
+│  │  ├─ document_loader.py
+│  │  ├─ text_splitter.py
+│  │  ├─ vector_db.py
+│  │  ├─ hybrid_retriever.py
+│  │  └─ generator.py
+│  └─ ui/
+│     ├─ index.html
+│     ├─ app.py
+│     └─ chat_ui.py
+├─ data/
+│  ├─ raw/
+│  ├─ processed/
+│  ├─ vector_store/
+│  └─ chat_history.json
+├─ tests/
+│  ├─ test_rag.py
+│  ├─ evaluate_rag.py
+│  └─ evaluate_retrieval.py
+├─ requirements.txt
+└─ README.md
 ```
 
----
+## 4) Yêu cầu môi trường
 
-## 🚀 Hướng dẫn cài đặt
+- Python `3.11+`
+- `pip`
+- Groq API key
 
-### 1. Clone và tạo môi trường
+## 5) Cài đặt nhanh
 
 ```bash
-git clone <repo-url>
-cd RAG-Chatbot
-
-# Tạo môi trường ảo
+# 1) Tạo môi trường ảo
 python -m venv venv
 
-# Kích hoạt (Windows)
-.\venv\Scripts\activate
+# 2) Kích hoạt (Windows PowerShell)
+.\venv\Scripts\Activate.ps1
 
-# Cài đặt thư viện
+# 3) Cài dependencies
 pip install -r requirements.txt
-pip install pypdf docx2txt rank-bm25
 ```
-
-### 2. Thiết lập API Key
 
 Tạo file `.env` ở thư mục gốc:
 
 ```env
-GROQ_API_KEY=gsk_your_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
-> 🔑 Lấy API Key miễn phí tại: [console.groq.com](https://console.groq.com)
+## 6) Chuẩn bị dữ liệu và tạo Vector DB
 
-### 3. Chuẩn bị dữ liệu
-
-Đặt file tài liệu vào `data/raw/` (VD: `Bo_luat_lao_dong_2019.docx`), sau đó chạy:
+Đặt tài liệu luật vào `data/raw/` (ví dụ: `Bo_luat_lao_dong_2019.docx`), sau đó chạy:
 
 ```bash
-# Bước 1: Đọc tài liệu
 python app/services/document_loader.py
-
-# Bước 2: Băm nhỏ tài liệu
 python app/services/text_splitter.py
-
-# Bước 3: Tạo Vector Database
 python app/services/vector_db.py
 ```
 
-### 4. Khởi động ứng dụng
+Ghi chú:
+- `vector_db.py` có thể rebuild lại toàn bộ `data/vector_store`.
+- Lần chạy đầu sẽ tải embedding model và cross-encoder nên có thể chậm hơn.
+
+## 7) Chạy ứng dụng
+
+### Cách A: FastAPI + Web UI chính
 
 ```bash
-# Chạy FastAPI Server + Frontend
 uvicorn app.main:app --reload
 ```
 
-Truy cập:
-- 🌐 **Giao diện Chat**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
-- 📄 **Swagger API Docs**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- Chat UI: `http://127.0.0.1:8000/`
+- API docs: `http://127.0.0.1:8000/docs`
 
----
-
-## 🧪 Kiểm thử
+### Cách B: Streamlit UI (nhẹ)
 
 ```bash
-# Chạy Unit Tests (Latency + Router)
+streamlit run app/ui/app.py
+```
+
+## 8) API chính
+
+### `POST /api/chat`
+
+Request mẫu:
+
+```json
+{
+  "query": "Lao động nữ nghỉ thai sản bao nhiêu tháng?",
+  "session_id": "optional-session-id",
+  "chat_history": [
+    {"role": "user", "content": "..."},
+    {"role": "assistant", "content": "..."}
+  ]
+}
+```
+
+Response mẫu:
+
+```json
+{
+  "answer": "...",
+  "session_id": "a1b2c3d4"
+}
+```
+
+Các endpoint khác:
+- `GET /api/sessions`
+- `GET /api/sessions/{session_id}`
+- `DELETE /api/sessions/{session_id}`
+
+## 9) Đánh giá và kiểm thử
+
+```bash
+# Test pipeline hội thoại/router cơ bản
 python tests/test_rag.py
 
-# Chạy đánh giá chất lượng RAG tự động
+# Đánh giá retrieval (precision/recall/mrr)
+python tests/evaluate_retrieval.py
+
+# Đánh giá end-to-end bằng LLM-as-a-judge
 python tests/evaluate_rag.py
 ```
 
----
+## 10) Công nghệ sử dụng
 
-## 🛠️ Công nghệ sử dụng
+- Backend: `FastAPI`, `Uvicorn`
+- LLM: `langchain-groq` (Llama 3.x)
+- Orchestration: `LangChain`
+- Vector DB: `ChromaDB`
+- Embedding: `FastEmbedEmbeddings` (model multilingual)
+- Keyword retrieval: `rank-bm25`
+- Reranker: `sentence-transformers` CrossEncoder
+- UI: HTML/CSS/JS + Streamlit
 
-| Thành phần | Công nghệ |
-|------------|-----------|
-| LLM | Llama 3.1 8B / Llama 3.3 70B (via Groq) |
-| Embedding | `keepitreal/vietnamese-sbert` (HuggingFace) |
-| Vector DB | ChromaDB |
-| Keyword Search | BM25 (rank-bm25) |
-| Backend | FastAPI + Uvicorn |
-| Frontend | HTML / CSS / Vanilla JS |
-| Orchestration | LangChain |
+## 11) Phạm vi dự án
 
----
+Dự án hiện tập trung vào **Bộ Luật Lao Động Việt Nam 2019**.
+Nếu câu hỏi ngoài phạm vi tài liệu đã nạp, bot sẽ từ chối hoặc trả lời giới hạn theo prompt an toàn.
 
-## 📊 Đánh giá chất lượng
+## 12) License
 
-Hệ thống được đánh giá tự động bằng phương pháp **LLM-as-a-Judge** theo 3 tiêu chí:
-
-| Tiêu chí | Ý nghĩa |
-|----------|---------|
-| **Faithfulness** | Bot không bịa đặt thông tin ngoài tài liệu |
-| **Relevancy** | Câu trả lời đúng trọng tâm câu hỏi |
-| **Correctness** | Câu trả lời khớp với đáp án chuẩn |
-
----
-
-## 📜 License
-
-Dự án được phát triển cho mục đích học tập và nghiên cứu.
+Phục vụ mục đích học tập, nghiên cứu và demo kỹ thuật.

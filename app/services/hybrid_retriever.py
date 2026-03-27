@@ -1,5 +1,7 @@
 import os
+import re
 import sys
+import unicodedata
 from typing import List
 
 from dotenv import load_dotenv
@@ -14,6 +16,37 @@ _cached_bm25 = None
 _cached_chunks = None
 _cached_cross_encoder = None
 
+_TOKEN_RE = re.compile(r"[^\w\s]", re.UNICODE)
+_WHITESPACE_RE = re.compile(r"\s+")
+_STOPWORDS = {
+    "và",
+    "là",
+    "của",
+    "theo",
+    "các",
+    "những",
+    "một",
+    "như",
+    "cho",
+    "trong",
+    "với",
+    "khi",
+    "nào",
+}
+
+
+def normalize_text(text: str) -> str:
+    text = unicodedata.normalize("NFKC", text.lower())
+    text = _TOKEN_RE.sub(" ", text)
+    text = _WHITESPACE_RE.sub(" ", text).strip()
+    return text
+
+
+def tokenize_text(text: str) -> List[str]:
+    normalized = normalize_text(text)
+    tokens = [token for token in normalized.split() if token and token not in _STOPWORDS]
+    return tokens
+
 
 def _build_bm25_index():
     global _cached_bm25, _cached_chunks
@@ -21,13 +54,13 @@ def _build_bm25_index():
     if _cached_bm25 is not None:
         return _cached_bm25, _cached_chunks
 
-    print("⏳ Đang xây bảng tra cứu BM25 (1 lần duy nhất)...")
+    print("⏳ Đang xây chỉ mục BM25 (1 lần duy nhất)...")
     db = get_vector_db()
     all_data = db.get()
     all_texts = all_data["documents"]
     all_metadatas = all_data["metadatas"]
 
-    tokenized_corpus = [doc.lower().split() for doc in all_texts]
+    tokenized_corpus = [tokenize_text(doc) for doc in all_texts]
     _cached_bm25 = BM25Okapi(tokenized_corpus)
     _cached_chunks = list(zip(all_texts, all_metadatas))
 
@@ -49,6 +82,9 @@ def _get_cross_encoder():
 
 
 def rerank_cross_encoder(query: str, candidates: List[str]) -> List[str]:
+    if not candidates:
+        return []
+
     model = _get_cross_encoder()
     pairs = [(query, passage[:500]) for passage in candidates]
     scores = model.predict(pairs)
@@ -59,31 +95,41 @@ def rerank_cross_encoder(query: str, candidates: List[str]) -> List[str]:
     return [text for score, text in scored]
 
 
-def _hybrid_search_items(query: str, top_k: int = 3) -> List[str]:
+def vector_search(query: str, top_k: int = 3) -> List[str]:
     db = get_vector_db()
-    vector_results = db.similarity_search(query, k=top_k + 2)
-    vector_texts = [doc.page_content for doc in vector_results]
+    results = db.similarity_search(query, k=top_k)
+    return [doc.page_content for doc in results]
 
+
+def bm25_search(query: str, top_k: int = 3) -> List[str]:
     bm25, chunks = _build_bm25_index()
-    tokenized_query = query.lower().split()
+    tokenized_query = tokenize_text(query)
+    if not tokenized_query:
+        return []
+
     bm25_scores = bm25.get_scores(tokenized_query)
-    top_indices = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)[: top_k + 2]
-    bm25_texts = [chunks[i][0] for i in top_indices]
+    top_indices = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)[:top_k]
+    return [chunks[i][0] for i in top_indices]
 
-    seen = set()
-    merged_texts: List[str] = []
-    for text in vector_texts + bm25_texts:
-        fingerprint = text[:120]
-        if fingerprint not in seen:
-            seen.add(fingerprint)
-            merged_texts.append(text)
 
-    reranked_texts = rerank_cross_encoder(query, merged_texts)
-    return reranked_texts[:top_k]
+def _reciprocal_rank_fusion(vector_texts: List[str], bm25_texts: List[str], top_k: int) -> List[str]:
+    scores = {}
+    for rank, text in enumerate(vector_texts):
+        scores[text] = scores.get(text, 0.0) + 1.0 / (rank + 1)
+    for rank, text in enumerate(bm25_texts):
+        scores[text] = scores.get(text, 0.0) + 1.0 / (rank + 1)
+
+    ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    return [text for text, score in ranked[:top_k]]
 
 
 def hybrid_search(query: str, top_k: int = 3) -> List[str]:
-    return _hybrid_search_items(query, top_k=top_k)
+    vector_texts = vector_search(query, top_k=top_k + 3)
+    bm25_texts = bm25_search(query, top_k=top_k + 3)
+
+    fused_candidates = _reciprocal_rank_fusion(vector_texts, bm25_texts, top_k=top_k + 5)
+    reranked = rerank_cross_encoder(query, fused_candidates)
+    return reranked[:top_k]
 
 
 if __name__ == "__main__":
