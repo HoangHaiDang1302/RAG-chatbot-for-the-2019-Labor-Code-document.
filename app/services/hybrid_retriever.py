@@ -1,8 +1,10 @@
 import os
 import re
 import sys
+import time
 import unicodedata
 from typing import List
+from collections import OrderedDict
 
 from dotenv import load_dotenv
 from rank_bm25 import BM25Okapi
@@ -15,6 +17,13 @@ from app.services.vector_db import get_vector_db
 _cached_bm25 = None
 _cached_chunks = None
 _cached_cross_encoder = None
+_retrieval_cache: OrderedDict[str, tuple[float, List[str]]] = OrderedDict()
+_RETRIEVAL_CACHE_TTL_SECONDS = int(os.getenv("RETRIEVAL_CACHE_TTL_SECONDS", "900"))
+_RETRIEVAL_CACHE_MAX_ITEMS = int(os.getenv("RETRIEVAL_CACHE_MAX_ITEMS", "1024"))
+_retrieval_metrics = {
+    "retrieval_cache_hit": 0,
+    "retrieval_cache_miss": 0,
+}
 
 _TOKEN_RE = re.compile(r"[^\w\s]", re.UNICODE)
 _WHITESPACE_RE = re.compile(r"\s+")
@@ -40,6 +49,36 @@ def normalize_text(text: str) -> str:
     text = _TOKEN_RE.sub(" ", text)
     text = _WHITESPACE_RE.sub(" ", text).strip()
     return text
+
+
+def _make_retrieval_cache_key(query: str, top_k: int) -> str:
+    return f"{normalize_text(query)}|k={top_k}"
+
+
+def _get_cached_retrieval(cache_key: str) -> List[str] | None:
+    entry = _retrieval_cache.get(cache_key)
+    if entry is None:
+        return None
+
+    expires_at, results = entry
+    if time.time() > expires_at:
+        _retrieval_cache.pop(cache_key, None)
+        return None
+
+    _retrieval_cache.move_to_end(cache_key)
+    return results
+
+
+def _set_cached_retrieval(cache_key: str, results: List[str]) -> None:
+    _retrieval_cache[cache_key] = (time.time() + _RETRIEVAL_CACHE_TTL_SECONDS, list(results))
+    _retrieval_cache.move_to_end(cache_key)
+
+    while len(_retrieval_cache) > _RETRIEVAL_CACHE_MAX_ITEMS:
+        _retrieval_cache.popitem(last=False)
+
+
+def get_retrieval_runtime_metrics() -> dict:
+    return dict(_retrieval_metrics)
 
 
 def tokenize_text(text: str) -> List[str]:
@@ -124,12 +163,21 @@ def _reciprocal_rank_fusion(vector_texts: List[str], bm25_texts: List[str], top_
 
 
 def hybrid_search(query: str, top_k: int = 3) -> List[str]:
+    cache_key = _make_retrieval_cache_key(query, top_k)
+    cached = _get_cached_retrieval(cache_key)
+    if cached is not None:
+        _retrieval_metrics["retrieval_cache_hit"] += 1
+        return list(cached)
+    _retrieval_metrics["retrieval_cache_miss"] += 1
+
     vector_texts = vector_search(query, top_k=top_k + 3)
     bm25_texts = bm25_search(query, top_k=top_k + 3)
 
     fused_candidates = _reciprocal_rank_fusion(vector_texts, bm25_texts, top_k=top_k + 5)
     reranked = rerank_cross_encoder(query, fused_candidates)
-    return reranked[:top_k]
+    final_results = reranked[:top_k]
+    _set_cached_retrieval(cache_key, final_results)
+    return final_results
 
 
 if __name__ == "__main__":

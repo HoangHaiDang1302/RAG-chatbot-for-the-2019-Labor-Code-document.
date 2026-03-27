@@ -12,7 +12,8 @@ from pydantic import BaseModel, Field
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.services.generator import generate_answer
+from app.services.generator import generate_answer, get_runtime_metrics
+from app.services.hybrid_retriever import get_retrieval_runtime_metrics
 from app.services.vector_db import get_vector_db
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -130,6 +131,14 @@ def delete_session(session_id: str):
         _save_all_sessions(sessions)
         return {"message": "Đã xóa"}
     return {"error": "Không tìm thấy"}
+
+
+@app.get("/api/metrics/cache")
+def get_cache_metrics():
+    return {
+        "generator": get_runtime_metrics(),
+        "retrieval": get_retrieval_runtime_metrics(),
+    }
 
 
 ui_dir = os.path.join(os.path.dirname(__file__), "ui")
