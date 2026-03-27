@@ -1,9 +1,6 @@
 import os
-from dotenv import load_dotenv
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_community.vectorstores import Chroma
-
-load_dotenv()
 
 # Đường dẫn DB
 DB_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "vector_store")
@@ -14,63 +11,42 @@ _cached_embeddings = None
 
 def get_embedding_model():
     """
-    Khởi tạo Google Gemini Embedding (Cloud API).
-    Cold start: 0 giây! Model nằm sẵn trên server Google.
+    Khởi tạo FastEmbed (Chạy Local, dùng chuẩn nén ONNX siêu nhẹ).
+    Cold start: siêu tốc ~1-2 giây. Không giới hạn request API, miễn phí 100%.
     """
     global _cached_embeddings
     
     if _cached_embeddings is None:
-        print("⚡ Kết nối Google Gemini Embedding API (0 giây cold start)...")
-        _cached_embeddings = GoogleGenerativeAIEmbeddings(
-            model="models/gemini-embedding-001",
-            google_api_key=os.environ.get("GOOGLE_API_KEY")
-        )
+        print("⚡ Khởi động FastEmbed Local (Sẽ mất chút thời gian tải Model lần đầu)...")
+        # Sử dụng model đa ngôn ngữ tương thích FastEmbed (Mã số đã được sửa lại cho đúng Tên Model)
+        _cached_embeddings = FastEmbedEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+        print("✅ Model ONNX đã nạp xong vào RAM!")
     return _cached_embeddings
 
 def create_vector_db(chunks):
     """
-    Xây mới kho VectorDB bằng Google Embedding.
-    Chia nhỏ thành từng lô 80 chunks để không vượt giới hạn 100 req/phút của Google Free Tier.
+    Xây mới kho VectorDB bằng FastEmbed.
+    Chạy sức mạnh CPU nội bộ 100%, không bị giới hạn 100 req/phút của API nào hết!
+    Nên giờ chúng ta không cần chia lô 80 và vã mồ hôi nằm chờ 60 giây như Google nữa!
     """
-    import time
-    
     embeddings = get_embedding_model()
-    BATCH_SIZE = 80
-    total = len(chunks)
+    print(f"📦 Đang dịch 1 mạch (embed) {len(chunks)} chunks thành số (Vector) nhanh như chớp...")
     
-    print(f"Đang tạo Vector DB với {total} chunks (chia thành lô {BATCH_SIZE})...")
-    
-    db = None
-    for i in range(0, total, BATCH_SIZE):
-        batch = chunks[i:i + BATCH_SIZE]
-        batch_num = (i // BATCH_SIZE) + 1
-        total_batches = (total + BATCH_SIZE - 1) // BATCH_SIZE
-        
-        print(f"   📦 Lô {batch_num}/{total_batches}: đang embed {len(batch)} chunks...")
-        
-        if db is None:
-            db = Chroma.from_documents(
-                documents=batch,
-                embedding=embeddings,
-                persist_directory=DB_DIR
-            )
-        else:
-            db.add_documents(batch)
-        
-        # Nghỉ 60 giây nếu còn lô tiếp theo (chờ Google reset quota)
-        if i + BATCH_SIZE < total:
-            print(f"   ⏳ Chờ 60 giây để Google reset quota...")
-            time.sleep(60)
-    
-    print(f"✅ Đã lưu toàn bộ {total} chunks vào DB!")
+    # Làm 1 lệnh nhét thẳng vô không cần chia lô
+    db = Chroma.from_documents(
+        documents=chunks,
+        embedding=embeddings,
+        persist_directory=DB_DIR
+    )
+    print(f"✅ Đã dập thành công vào kho VectorDB nội bộ!")
     return db
 
 def get_vector_db():
-    """Phục hồi DB từ ổ cứng (có cache RAM)."""
+    """Phục hồi DB từ ổ cứng (có cache RAM để chống load đi load lại nhiều lần)."""
     global _cached_db
     
     if _cached_db is None:
-        print("⏳ Đang kết nối Vector DB...")
+        print("⏳ Đang kết nối Vector DB Local...")
         embeddings = get_embedding_model()
         _cached_db = Chroma(persist_directory=DB_DIR, embedding_function=embeddings)
     
@@ -86,17 +62,17 @@ if __name__ == "__main__":
     sample_file = os.path.join(os.path.dirname(__file__), "..", "..", "data", "raw", "Bo_luat_lao_dong_2019.docx")
     
     print("="*50)
-    print("🔄 XÂY LẠI VECTOR DB VỚI GOOGLE EMBEDDING")
+    print("🔄 TÁI SINH VÀ LÊN ĐỜI VECTOR DB LÊN CHUẨN FASTEMBED (ONNX)")
     print("="*50)
     
-    # Xóa DB cũ
+    # Xóa DB cũ để tránh xung đột mã số học sinh
     import shutil
     if os.path.exists(DB_DIR):
         shutil.rmtree(DB_DIR)
-        print("🗑️ Đã xóa DB cũ (embedding cũ không tương thích)")
+        print("🗑️ Đã cho Thùng rác DB cũ (vì không cùng ngôn ngữ Embedding)")
     
     docs = load_document(sample_file)
     chunks = split_documents(docs, chunk_size=1000, chunk_overlap=200)
     db = create_vector_db(chunks)
     
-    print("\n✅ XONG! Vector DB mới đã sẵn sàng với Google Embedding!")
+    print("\n✅ THÀNH CÔNG! Vector DB xịn xò chạy Offine Không Giới Hạn đã lên sàn!")
