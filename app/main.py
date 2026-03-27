@@ -1,70 +1,133 @@
 import sys
 import os
+import json
+import uuid
+from datetime import datetime
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
-# Đường nối các mảnh ghép
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from app.services.generator import generate_answer
 from langchain_core.messages import HumanMessage, AIMessage
 
-# --- 1. XÂY TRẠM PHÁT SÓNG FASTAPI ---
-app = FastAPI(
-    title="Luật Sư Ảo RAG API",
-    description="Cổng giao tiếp Internet siêu tốc cho RAG Chatbot",
-    version="2.0.0"
-)
+app = FastAPI(title="Luật Sư Ảo RAG API", version="3.0.0")
 
-# Cho phép Frontend gọi API mà không bị trình duyệt chặn (CORS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # Cho phép mọi nguồn gốc (dev mode)
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Khởi động trước bộ nhớ DB để ghim cứng lên RAM
+# Warm-up
 from app.services.vector_db import get_vector_db
-print(">>> FASTAPI ĐANG BẬT MÁY: Ráp nối mô hình AI vào RAM trước...")
+print(">>> FASTAPI ĐANG BẬT MÁY...")
 get_vector_db()
 print(">>> MÁY SẴN SÀNG!")
 
-# --- 2. BẢN THIẾT KẾ ĐẦU VÀO ĐẦU RA ---
+# --- LƯU TRỮ LỊCH SỬ ---
+HISTORY_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "chat_history.json")
+
+def _load_all_sessions():
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def _save_all_sessions(sessions):
+    os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(sessions, f, ensure_ascii=False, indent=2)
+
+# --- MODELS ---
 class ChatRequest(BaseModel):
     query: str
+    session_id: Optional[str] = None
     chat_history: List[dict] = []
 
 class ChatResponse(BaseModel):
     answer: str
+    session_id: str
 
-# --- 3. ĐƯỜNG HẦM API ---
+class SessionSummary(BaseModel):
+    session_id: str
+    title: str
+    created_at: str
+    message_count: int
+
+# --- API ENDPOINTS ---
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_with_bot(request: ChatRequest):
-    """Nhận câu hỏi từ Frontend, xử lý RAG, trả kết quả."""
+    """Chat + tự động lưu lịch sử."""
+    # Tạo session mới nếu chưa có
+    session_id = request.session_id or str(uuid.uuid4())[:8]
+    
+    # Chuyển đổi lịch sử
     lc_history = []
-    for tin_nhan in request.chat_history:
-        if tin_nhan.get("role") == "user":
-            lc_history.append(HumanMessage(content=tin_nhan.get("content")))
-        elif tin_nhan.get("role") == "assistant":
-            lc_history.append(AIMessage(content=tin_nhan.get("content")))
-            
-    cau_tra_loi = generate_answer(query=request.query, chat_history=lc_history)
-    return ChatResponse(answer=cau_tra_loi)
+    for msg in request.chat_history:
+        if msg.get("role") == "user":
+            lc_history.append(HumanMessage(content=msg.get("content")))
+        elif msg.get("role") == "assistant":
+            lc_history.append(AIMessage(content=msg.get("content")))
+    
+    # Gọi RAG
+    answer = generate_answer(query=request.query, chat_history=lc_history)
+    
+    # Lưu vào file JSON
+    sessions = _load_all_sessions()
+    if session_id not in sessions:
+        sessions[session_id] = {
+            "title": request.query[:50],
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "messages": []
+        }
+    sessions[session_id]["messages"].append({"role": "user", "content": request.query})
+    sessions[session_id]["messages"].append({"role": "assistant", "content": answer})
+    _save_all_sessions(sessions)
+    
+    return ChatResponse(answer=answer, session_id=session_id)
 
-# --- 4. PHỤC VỤ GIAO DIỆN WEB (Frontend) ---
-# Trỏ đường dẫn tĩnh vào thư mục ui
+@app.get("/api/sessions")
+def get_all_sessions():
+    """Lấy danh sách tất cả cuộc hội thoại đã lưu."""
+    sessions = _load_all_sessions()
+    result = []
+    for sid, data in sessions.items():
+        result.append(SessionSummary(
+            session_id=sid,
+            title=data.get("title", "Cuộc trò chuyện"),
+            created_at=data.get("created_at", ""),
+            message_count=len(data.get("messages", []))
+        ))
+    # Sắp xếp theo thời gian mới nhất
+    result.sort(key=lambda x: x.created_at, reverse=True)
+    return result
+
+@app.get("/api/sessions/{session_id}")
+def get_session(session_id: str):
+    """Lấy toàn bộ tin nhắn của 1 cuộc hội thoại."""
+    sessions = _load_all_sessions()
+    if session_id in sessions:
+        return sessions[session_id]
+    return {"error": "Không tìm thấy cuộc hội thoại"}
+
+@app.delete("/api/sessions/{session_id}")
+def delete_session(session_id: str):
+    """Xóa 1 cuộc hội thoại."""
+    sessions = _load_all_sessions()
+    if session_id in sessions:
+        del sessions[session_id]
+        _save_all_sessions(sessions)
+        return {"message": "Đã xóa"}
+    return {"error": "Không tìm thấy"}
+
+# --- FRONTEND ---
 ui_dir = os.path.join(os.path.dirname(__file__), "ui")
 
 @app.get("/")
 def serve_frontend():
-    """Mở trang chủ sẽ hiện ra giao diện Chat siêu xịn."""
     return FileResponse(os.path.join(ui_dir, "index.html"))
-
-@app.get("/health")
-def health_check():
-    return {"status": "alive", "message": "Trạm phát sóng API đang hoạt động bình thường!"}

@@ -8,136 +8,108 @@ load_dotenv()
 
 from app.services.vector_db import get_vector_db
 
-# Biến Toàn Cục: Ghim bộ máy BM25 vào RAM (tránh tải đi tải lại nhiều lần)
+# Biến Toàn Cục (Cache trên RAM)
 _cached_bm25 = None
 _cached_chunks = None
+_cached_cross_encoder = None
 
 def _build_bm25_index():
-    """
-    Xây dựng Chỉ Mục BM25 (Bảng tra cứu Từ Khóa).
-    Lấy toàn bộ chunks trong ChromaDB ra, tách từng chữ, nạp vào BM25.
-    """
+    """Xây Bảng Tra Cứu Từ Khóa BM25."""
     global _cached_bm25, _cached_chunks
     
     if _cached_bm25 is not None:
         return _cached_bm25, _cached_chunks
     
-    print("⏳ Đang xây Bảng Tra Cứu Từ Khóa BM25 (Chỉ tốn 1 lần)...")
+    print("⏳ Đang xây Bảng Tra Cứu BM25 (1 lần duy nhất)...")
     db = get_vector_db()
-    
-    # Lôi toàn bộ tài liệu thô từ kho ChromaDB ra
     all_data = db.get()
-    all_texts = all_data["documents"]   # Danh sách các đoạn văn bản
-    all_metadatas = all_data["metadatas"]  # Metadata đi kèm mỗi đoạn
+    all_texts = all_data["documents"]
+    all_metadatas = all_data["metadatas"]
     
-    # BM25 cần mỗi đoạn văn ở dạng danh sách các từ (tokenized)
     tokenized_corpus = [doc.lower().split() for doc in all_texts]
-    
     _cached_bm25 = BM25Okapi(tokenized_corpus)
     _cached_chunks = list(zip(all_texts, all_metadatas))
     
-    print(f"✅ Đã xây xong Bảng BM25 với {len(all_texts)} khối văn bản.")
+    print(f"✅ BM25 sẵn sàng với {len(all_texts)} chunks.")
     return _cached_bm25, _cached_chunks
+
+def _get_cross_encoder():
+    """Tải Cross-Encoder model lên RAM (1 lần duy nhất)."""
+    global _cached_cross_encoder
+    
+    if _cached_cross_encoder is None:
+        print("⏳ Đang tải Cross-Encoder lên RAM (1 lần duy nhất, ~50MB)...")
+        from sentence_transformers import CrossEncoder
+        _cached_cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        print("✅ Cross-Encoder sẵn sàng!")
+    
+    return _cached_cross_encoder
+
+def rerank_cross_encoder(query: str, candidates: list) -> list:
+    """
+    Cross-Encoder Reranker: Model cục bộ chấm điểm tất cả cùng lúc (batch).
+    Nhanh (~0.2 giây) và chính xác cao.
+    """
+    model = _get_cross_encoder()
+    pairs = [(query, passage[:500]) for passage in candidates]
+    scores = model.predict(pairs)
+    
+    scored = list(zip(scores, candidates))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    
+    return [text for score, text in scored]
 
 def hybrid_search(query: str, top_k: int = 3):
     """
-    TÌM KIẾM LAI (Hybrid Search):
-    - Nhánh 1: Vector Search (Tìm theo Ý Nghĩa)
-    - Nhánh 2: BM25 Search (Tìm theo Từ Khóa Chính Xác)
-    - Bộ lọc: Trộn lại -> Loại trùng -> Dùng LLM nhỏ chấm điểm (Reranker)
+    Hybrid Search: Vector + BM25 + Cross-Encoder Reranker.
     """
-    # ---- NHÁNH 1: VECTOR SEARCH (Tìm theo toạ độ Ý nghĩa) ----
+    # ---- NHÁNH 1: VECTOR SEARCH ----
     db = get_vector_db()
-    vector_results = db.similarity_search(query, k=top_k)
+    vector_results = db.similarity_search(query, k=top_k + 2)
     vector_texts = [doc.page_content for doc in vector_results]
     
-    print(f"\n🔵 Vector Search lôi được {len(vector_texts)} mẩu theo ý nghĩa.")
-    
-    # ---- NHÁNH 2: BM25 SEARCH (Đếm Từ Khóa Chính Xác) ----
+    # ---- NHÁNH 2: BM25 SEARCH ----
     bm25, chunks = _build_bm25_index()
     tokenized_query = query.lower().split()
     bm25_scores = bm25.get_scores(tokenized_query)
-    
-    # Lấy chỉ số (index) của top_k đoạn có điểm BM25 cao nhất
-    top_bm25_indices = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)[:top_k]
-    bm25_texts = [chunks[i][0] for i in top_bm25_indices]
-    
-    print(f"🟡 BM25 Search lôi được {len(bm25_texts)} mẩu theo từ khóa.")
+    top_indices = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)[:top_k + 2]
+    bm25_texts = [chunks[i][0] for i in top_indices]
     
     # ---- TRỘN & KHỬ TRÙNG ----
     seen = set()
     merged = []
     for text in vector_texts + bm25_texts:
-        # Dùng 100 ký tự đầu làm "vân tay" nhận diện trùng lặp
-        fingerprint = text[:100]
-        if fingerprint not in seen:
-            seen.add(fingerprint)
+        fp = text[:100]
+        if fp not in seen:
+            seen.add(fp)
             merged.append(text)
     
-    print(f"🟢 Sau khi trộn và khử trùng: còn {len(merged)} mẩu độc nhất.")
+    # ---- CROSS-ENCODER RERANK ----
+    reranked = rerank_cross_encoder(query, merged)
     
-    # ---- RERANKER (Chấm Điểm Lại bằng LLM siêu nhỏ) ----
-    reranked = rerank_with_llm(query, merged, top_k=top_k)
-    
-    return reranked
+    return reranked[:top_k]
 
-def rerank_with_llm(query: str, candidates: list, top_k: int = 3):
-    """
-    RERANKER: Dùng LLM siêu nhỏ để chấm điểm lại từng đoạn văn bản.
-    Đoạn nào liên quan nhất với câu hỏi sẽ được chọn.
-    """
-    from langchain_groq import ChatGroq
-    from langchain_core.prompts import ChatPromptTemplate
-    
-    llm = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0)
-    
-    rerank_prompt = ChatPromptTemplate.from_template("""
-Hãy chấm điểm từ 0 đến 10 mức độ liên quan giữa CÂU HỎI và ĐOẠN VĂN BẢN dưới đây.
-Chỉ trả về DUY NHẤT MỘT CON SỐ (ví dụ: 8). Không giải thích.
-
-CÂU HỎI: {question}
-
-ĐOẠN VĂN BẢN: {passage}
-
-ĐIỂM:""")
-    
-    scored = []
-    print(f"\n📊 Reranker đang chấm điểm {len(candidates)} ứng viên...")
-    
-    for i, passage in enumerate(candidates):
-        try:
-            chain = rerank_prompt | llm
-            result = chain.invoke({"question": query, "passage": passage[:500]})
-            # Trích con số điểm từ phản hồi
-            score_text = result.content.strip()
-            score = float(''.join(c for c in score_text if c.isdigit() or c == '.') or '0')
-        except Exception:
-            score = 0
-        
-        scored.append((score, passage))
-        print(f"   Ứng viên {i+1}: {score}/10 điểm")
-    
-    # Xếp theo điểm giảm dần, lấy top_k đoạn ngon nhất
-    scored.sort(key=lambda x: x[0], reverse=True)
-    winners = [text for score, text in scored[:top_k]]
-    
-    print(f"🏆 Reranker đã chọn ra {len(winners)} đoạn chất lượng nhất!")
-    return winners
-
-# ---- TEST THỬ ----
+# ---- TEST ----
 if __name__ == "__main__":
-    print("="*60)
-    print("TEST 1: Câu hỏi theo Ý Nghĩa (Vector sẽ giỏi)")
-    print("="*60)
-    results_1 = hybrid_search("Phụ nữ mang thai được nghỉ bao lâu?", top_k=3)
-    for i, r in enumerate(results_1):
-        print(f"\n--- Kết quả {i+1} ---")
-        print(r[:200])
+    import time
     
-    print("\n" + "="*60)
-    print("TEST 2: Câu hỏi theo Từ Khóa Chính Xác (BM25 sẽ giỏi)")
-    print("="*60)
-    results_2 = hybrid_search("Điều 98", top_k=3)
-    for i, r in enumerate(results_2):
-        print(f"\n--- Kết quả {i+1} ---")
-        print(r[:200])
+    # Warm-up
+    print("🔥 Warm-up: Tải model lên RAM...")
+    _get_cross_encoder()
+    _build_bm25_index()
+    get_vector_db().similarity_search("test", k=1)
+    print("✅ Sẵn sàng!\n")
+    
+    # Benchmark
+    queries = [
+        "Phụ nữ mang thai được nghỉ bao lâu?",
+        "Điều 98 quy định gì?",
+        "Tiền lương làm thêm giờ ban đêm tính thế nào?",
+    ]
+    
+    for q in queries:
+        start = time.time()
+        results = hybrid_search(q, top_k=3)
+        elapsed = time.time() - start
+        print(f"⏱️ {elapsed:.2f}s | '{q}'")
+        print(f"   → {results[0][:80]}...\n")
