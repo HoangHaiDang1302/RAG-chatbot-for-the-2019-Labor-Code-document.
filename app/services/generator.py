@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Any, Dict, List
+from typing import Any, List
 
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage
@@ -11,7 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 load_dotenv()
 
 from app.core.prompts import contextualize_q_prompt, qa_prompt
-from app.services.hybrid_retriever import hybrid_search_with_sources
+from app.services.hybrid_retriever import hybrid_search
 
 router_prompt_template = """
 Bạn là bộ phân loại câu hỏi (Router).
@@ -37,37 +37,12 @@ def _serialize_history(chat_history: List[Any]) -> str:
     return "\n".join([m.content for m in chat_history[-2:]])
 
 
-def _build_context(items: List[Dict[str, Any]]) -> str:
-    blocks = []
-    for idx, item in enumerate(items, start=1):
-        citation = item["metadata"]["citation"]
-        blocks.append(f"[Nguồn {idx}] {citation}\n{item['text']}")
-    return "\n\n---\n\n".join(blocks)
-
-
-def _build_sources(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    return [
-        {
-            "citation": item["metadata"]["citation"],
-            "source_name": item["metadata"]["source_name"],
-            "source_path": item["metadata"]["source_path"],
-            "page": item["metadata"]["page"],
-            "chunk_index": item["metadata"]["chunk_index"],
-            "snippet": item["text"][:240],
-        }
-        for item in items
-    ]
-
-
-def generate_answer_with_sources(query: str, chat_history: List[Any] | None = None) -> Dict[str, Any]:
+def generate_answer(query: str, chat_history: List[Any] | None = None):
     chat_history = chat_history or []
 
     try:
         if not os.environ.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY") == "your_groq_api_key_here":
-            return {
-                "answer": "Lỗi: Chưa có chìa khóa GROQ_API_KEY",
-                "sources": [],
-            }
+            return "Lỗi: Chưa có chìa khóa GROQ_API_KEY"
 
         llm_tra_loi = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0)
         llm_router_sieu_nhanh = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0)
@@ -99,8 +74,8 @@ def generate_answer_with_sources(query: str, chat_history: List[Any] | None = No
                 )
                 cau_hoi_chinh_xac = ket_qua_viet_lai.content
 
-        retrieved_items = hybrid_search_with_sources(cau_hoi_chinh_xac, top_k=3)
-        context = _build_context(retrieved_items)
+        cac_mau_luat = hybrid_search(cau_hoi_chinh_xac, top_k=3)
+        context = "\n\n---\n\n".join(cac_mau_luat)
 
         may_tra_loi = qa_prompt | llm_tra_loi
         response = may_tra_loi.invoke(
@@ -111,20 +86,10 @@ def generate_answer_with_sources(query: str, chat_history: List[Any] | None = No
             }
         )
 
-        return {
-            "answer": response.content,
-            "sources": _build_sources(retrieved_items),
-        }
+        return response.content
 
     except Exception as e:
-        return {
-            "answer": f"Sự cố hệ thống Router: {str(e)}",
-            "sources": [],
-        }
-
-
-def generate_answer(query: str, chat_history: List[Any] | None = None):
-    return generate_answer_with_sources(query=query, chat_history=chat_history)["answer"]
+        return f"Sự cố hệ thống Router: {str(e)}"
 
 
 if __name__ == "__main__":

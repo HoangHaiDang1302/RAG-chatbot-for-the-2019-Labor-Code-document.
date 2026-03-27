@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Dict, List
+from typing import List
 
 from dotenv import load_dotenv
 from rank_bm25 import BM25Okapi
@@ -59,82 +59,30 @@ def rerank_cross_encoder(query: str, candidates: List[str]) -> List[str]:
     return [text for score, text in scored]
 
 
-def _normalize_metadata(metadata: Dict | None, fallback_index: int | None = None) -> Dict:
-    metadata = metadata or {}
-    source_path = metadata.get("source") or metadata.get("file_path") or "Tài liệu"
-    source_name = os.path.basename(source_path) if source_path else "Tài liệu"
-    page = metadata.get("page")
-    chunk_index = metadata.get("chunk_index") or fallback_index
-
-    parts = [source_name]
-    if page is not None:
-        try:
-            parts.append(f"trang {int(page) + 1}")
-        except Exception:
-            parts.append(f"trang {page}")
-    if chunk_index is not None:
-        try:
-            parts.append(f"đoạn {int(chunk_index)}")
-        except Exception:
-            parts.append(f"đoạn {chunk_index}")
-
-    return {
-        "source_path": source_path,
-        "source_name": source_name,
-        "page": page,
-        "chunk_index": chunk_index,
-        "citation": ", ".join(parts),
-    }
-
-
-def _hybrid_search_items(query: str, top_k: int = 3) -> List[Dict]:
+def _hybrid_search_items(query: str, top_k: int = 3) -> List[str]:
     db = get_vector_db()
     vector_results = db.similarity_search(query, k=top_k + 2)
-    vector_items = [
-        {
-            "text": doc.page_content,
-            "metadata": _normalize_metadata(doc.metadata, idx + 1),
-        }
-        for idx, doc in enumerate(vector_results)
-    ]
+    vector_texts = [doc.page_content for doc in vector_results]
 
     bm25, chunks = _build_bm25_index()
     tokenized_query = query.lower().split()
     bm25_scores = bm25.get_scores(tokenized_query)
     top_indices = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)[: top_k + 2]
-    bm25_items = [
-        {
-            "text": chunks[i][0],
-            "metadata": _normalize_metadata(chunks[i][1], i + 1),
-        }
-        for i in top_indices
-    ]
+    bm25_texts = [chunks[i][0] for i in top_indices]
 
     seen = set()
-    merged_items: List[Dict] = []
-    for item in vector_items + bm25_items:
-        fingerprint = item["text"][:120]
+    merged_texts: List[str] = []
+    for text in vector_texts + bm25_texts:
+        fingerprint = text[:120]
         if fingerprint not in seen:
             seen.add(fingerprint)
-            merged_items.append(item)
+            merged_texts.append(text)
 
-    reranked_texts = rerank_cross_encoder(query, [item["text"] for item in merged_items])
-    text_to_item = {item["text"]: item for item in merged_items}
-
-    ordered_items = []
-    for text in reranked_texts:
-        item = text_to_item.get(text)
-        if item:
-            ordered_items.append(item)
-
-    return ordered_items[:top_k]
+    reranked_texts = rerank_cross_encoder(query, merged_texts)
+    return reranked_texts[:top_k]
 
 
 def hybrid_search(query: str, top_k: int = 3) -> List[str]:
-    return [item["text"] for item in _hybrid_search_items(query, top_k=top_k)]
-
-
-def hybrid_search_with_sources(query: str, top_k: int = 3) -> List[Dict]:
     return _hybrid_search_items(query, top_k=top_k)
 
 

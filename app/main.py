@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.services.generator import generate_answer_with_sources
+from app.services.generator import generate_answer
 from app.services.vector_db import get_vector_db
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -52,19 +52,9 @@ class ChatRequest(BaseModel):
     chat_history: List[dict] = Field(default_factory=list)
 
 
-class SourceReference(BaseModel):
-    citation: str
-    source_name: str
-    source_path: str
-    page: Optional[int] = None
-    chunk_index: Optional[int] = None
-    snippet: str
-
-
 class ChatResponse(BaseModel):
     answer: str
     session_id: str
-    sources: List[SourceReference] = Field(default_factory=list)
 
 
 class SessionSummary(BaseModel):
@@ -85,9 +75,7 @@ async def chat_with_bot(request: ChatRequest):
         elif msg.get("role") == "assistant":
             lc_history.append(AIMessage(content=msg.get("content")))
 
-    result = generate_answer_with_sources(query=request.query, chat_history=lc_history)
-    answer = result["answer"]
-    sources = result["sources"]
+    answer = generate_answer(query=request.query, chat_history=lc_history)
 
     sessions = _load_all_sessions()
     if session_id not in sessions:
@@ -102,12 +90,11 @@ async def chat_with_bot(request: ChatRequest):
         {
             "role": "assistant",
             "content": answer,
-            "sources": sources,
         }
     )
     _save_all_sessions(sessions)
 
-    return ChatResponse(answer=answer, session_id=session_id, sources=sources)
+    return ChatResponse(answer=answer, session_id=session_id)
 
 
 @app.get("/api/sessions")
