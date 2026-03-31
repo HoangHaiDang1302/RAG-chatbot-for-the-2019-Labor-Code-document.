@@ -1,1 +1,110 @@
-﻿{  "98421978": {    "title": "Làm thêm giờ ngày lễ trả lương thế nào?",    "created_at": "2026-03-27 11:06",    "messages": [      {        "role": "user",        "content": "Làm thêm giờ ngày lễ trả lương thế nào?"      },      {        "role": "assistant",        "content": "Xin lỗi, văn kiện luật hiện tại không có nhắc đến vấn đề này, tôi không thể trả lời.",        "sources": [          {            "citation": "Bo_luat_lao_dong_2019.docx, đoạn 118",            "source_name": "Bo_luat_lao_dong_2019.docx",            "source_path": "c:\\Users\\Dell\\machine learning\\RAG chatbot\\app\\services\\..\\..\\data\\raw\\Bo_luat_lao_dong_2019.docx",            "page": null,            "chunk_index": 118,            "snippet": "5. Chính phủ quy định chi tiết Điều này.\n\nĐiều 108. Làm thêm giờ trong trường hợp đặc biệt\n\nNgười sử dụng lao động có quyền yêu cầu người lao động làm thêm giờ vào bất kỳ ngày nào mà không bị giới hạn về số giờ làm thêm theo quy định tại Đi"          },          {            "citation": "Bo_luat_lao_dong_2019.docx, đoạn 116",            "source_name": "Bo_luat_lao_dong_2019.docx",            "source_path": "c:\\Users\\Dell\\machine learning\\RAG chatbot\\app\\services\\..\\..\\data\\raw\\Bo_luat_lao_dong_2019.docx",            "page": null,            "chunk_index": 116,            "snippet": "2. Người sử dụng lao động được sử dụng người lao động làm thêm giờ khi đáp ứng đầy đủ các yêu cầu sau đây:\n\na) Phải được sự đồng ý của người lao động;\n\nb) Bảo đảm số giờ làm thêm của người lao động không quá 50% số giờ làm việc bình thường "          },          {            "citation": "Bo_luat_lao_dong_2019.docx, đoạn 1",            "source_name": "Bo_luat_lao_dong_2019.docx",            "source_path": "c:\\Users\\Dell\\machine learning\\RAG chatbot\\app\\services\\..\\..\\data\\raw\\Bo_luat_lao_dong_2019.docx",            "page": null,            "chunk_index": 1,            "snippet": "c) Vào ngày nghỉ lễ, tết, ngày nghỉ có hưởng lương, ít nhất bằng 300% chưa kể tiền lương ngày lễ, tết, ngày nghỉ có hưởng lương đối với người lao động hưởng lương ngày.\n\n2. Người lao động làm việc vào ban đêm thì được trả thêm ít nhất bằng "          }        ]      }    ]  },  "7f565197": {    "title": "Thử việc tối đa bao nhiêu ngày?",    "created_at": "2026-03-27 11:06",    "messages": [      {        "role": "user",        "content": "Thử việc tối đa bao nhiêu ngày?"      },      {        "role": "assistant",        "content": "Theo đoạn 2 của tài liệu [Nguồn 1], thời gian thử việc tối đa được quy định như sau:\n\n- Không quá 180 ngày đối với công việc của người quản lý doanh nghiệp theo quy định của Luật Doanh nghiệp, Luật Quản lý, sử dụng vốn nhà nước đầu tư vào sản xuất, kinh doanh tại doanh nghiệp;\n- Không quá 60 ngày đối với công việc có chức danh nghề nghiệp cần trình độ chuyên môn, kỹ thuật từ cao đẳng trở lên;\n- Không quá 30 ngày đối với công việc có chức danh nghề nghiệp cần trình độ chuyên môn, kỹ thuật trung cấp, công nhân kỹ thuật, nhân viên nghiệp vụ;\n- Không quá 06 ngày làm việc đối với công việc khác.\n\nVậy, thời gian thử việc tối đa là 180 ngày đối với một số công việc đặc biệt, còn lại là các công việc khác tối đa 60, 30 hoặc 06 ngày làm việc.",        "sources": [          {            "citation": "Bo_luat_lao_dong_2019.docx, đoạn 2",            "source_name": "Bo_luat_lao_dong_2019.docx",            "source_path": "c:\\Users\\Dell\\machine learning\\RAG chatbot\\app\\services\\..\\..\\data\\raw\\Bo_luat_lao_dong_2019.docx",            "page": null,            "chunk_index": 2,            "snippet": "Thời gian thử việc do hai bên thỏa thuận căn cứ vào tính chất và mức độ phức tạp của công việc nhưng chỉ được thử việc một lần đối với một công việc và bảo đảm điều kiện sau đây:\n\n1. Không quá 180 ngày đối với công việc của người quản lý do"          },          {            "citation": "Bo_luat_lao_dong_2019.docx, đoạn 4",            "source_name": "Bo_luat_lao_dong_2019.docx",            "source_path": "c:\\Users\\Dell\\machine learning\\RAG chatbot\\app\\services\\..\\..\\data\\raw\\Bo_luat_lao_dong_2019.docx",            "page": null,            "chunk_index": 4,            "snippet": "a) Ít nhất 45 ngày nếu làm việc theo hợp đồng lao động không xác định thời hạn;\n\nb) Ít nhất 30 ngày nếu làm việc theo hợp đồng lao động xác định thời hạn có thời hạn từ 12 tháng đến 36 tháng;\n\nc) Ít nhất 03 ngày làm việc nếu làm việc theo h"          },          {            "citation": "Bo_luat_lao_dong_2019.docx, đoạn 1",            "source_name": "Bo_luat_lao_dong_2019.docx",            "source_path": "c:\\Users\\Dell\\machine learning\\RAG chatbot\\app\\services\\..\\..\\data\\raw\\Bo_luat_lao_dong_2019.docx",            "page": null,            "chunk_index": 1,            "snippet": "c) 16 ngày làm việc đối với người làm nghề, công việc đặc biệt nặng nhọc, độc hại, nguy hiểm.\n\n2. Người lao động làm việc chưa đủ 12 tháng cho một người sử dụng lao động thì số ngày nghỉ hằng năm theo tỷ lệ tương ứng với số tháng làm việc. "          }        ]      }    ]  }}
+{
+  "98421978": {
+    "title": "Làm thêm giờ ngày lễ trả lương thế nào?",
+    "created_at": "2026-03-27 11:06",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Làm thêm giờ ngày lễ trả lương thế nào?"
+      },
+      {
+        "role": "assistant",
+        "content": "Xin lỗi, văn kiện luật hiện tại không có nhắc đến vấn đề này, tôi không thể trả lời.",
+        "sources": [
+          {
+            "citation": "Bo_luat_lao_dong_2019.docx, đoạn 118",
+            "source_name": "Bo_luat_lao_dong_2019.docx",
+            "source_path": "c:\\Users\\Dell\\machine learning\\RAG chatbot\\app\\services\\..\\..\\data\\raw\\Bo_luat_lao_dong_2019.docx",
+            "page": null,
+            "chunk_index": 118,
+            "snippet": "5. Chính phủ quy định chi tiết Điều này.\n\nĐiều 108. Làm thêm giờ trong trường hợp đặc biệt\n\nNgười sử dụng lao động có quyền yêu cầu người lao động làm thêm giờ vào bất kỳ ngày nào mà không bị giới hạn về số giờ làm thêm theo quy định tại Đi"
+          },
+          {
+            "citation": "Bo_luat_lao_dong_2019.docx, đoạn 116",
+            "source_name": "Bo_luat_lao_dong_2019.docx",
+            "source_path": "c:\\Users\\Dell\\machine learning\\RAG chatbot\\app\\services\\..\\..\\data\\raw\\Bo_luat_lao_dong_2019.docx",
+            "page": null,
+            "chunk_index": 116,
+            "snippet": "2. Người sử dụng lao động được sử dụng người lao động làm thêm giờ khi đáp ứng đầy đủ các yêu cầu sau đây:\n\na) Phải được sự đồng ý của người lao động;\n\nb) Bảo đảm số giờ làm thêm của người lao động không quá 50% số giờ làm việc bình thường "
+          },
+          {
+            "citation": "Bo_luat_lao_dong_2019.docx, đoạn 1",
+            "source_name": "Bo_luat_lao_dong_2019.docx",
+            "source_path": "c:\\Users\\Dell\\machine learning\\RAG chatbot\\app\\services\\..\\..\\data\\raw\\Bo_luat_lao_dong_2019.docx",
+            "page": null,
+            "chunk_index": 1,
+            "snippet": "c) Vào ngày nghỉ lễ, tết, ngày nghỉ có hưởng lương, ít nhất bằng 300% chưa kể tiền lương ngày lễ, tết, ngày nghỉ có hưởng lương đối với người lao động hưởng lương ngày.\n\n2. Người lao động làm việc vào ban đêm thì được trả thêm ít nhất bằng "
+          }
+        ]
+      }
+    ]
+  },
+  "b4e4117d": {
+    "title": "Nghỉ thai sản được bao lâu?",
+    "created_at": "2026-03-30 16:18",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Nghỉ thai sản được bao lâu?"
+      },
+      {
+        "role": "assistant",
+        "content": "Theo Điều 139 của Bộ luật Lao động 2019, lao động nữ được nghỉ thai sản trước và sau khi sinh con là 06 tháng."
+      }
+    ]
+  },
+  "0ea70143": {
+    "title": "hello",
+    "created_at": "2026-03-30 16:18",
+    "messages": [
+      {
+        "role": "user",
+        "content": "hello"
+      },
+      {
+        "role": "assistant",
+        "content": "Xin chào! Tôi sẵn sàng giúp đỡ bạn về các vấn đề liên quan đến Bộ Luật Lao Động 2019. Bạn có câu hỏi nào không?"
+      },
+      {
+        "role": "user",
+        "content": "nay ngày bao nhiêu"
+      },
+      {
+        "role": "assistant",
+        "content": "Tôi không thể xác định được ngày hiện tại vì thông tin này không được cung cấp trong tài liệu. Tuy nhiên, tôi có thể giúp bạn xác định ngày nghỉ lễ theo quy định tại Bộ Luật Lao Động 2019.\n\nTheo Điều 113, Bộ Luật Lao Động 2019 quy định các ngày nghỉ lễ như sau:\n\n- Quốc khánh: 02 ngày (ngày 02 tháng 9 dương lịch và 01 ngày liền kề trước hoặc sau);\n- Ngày Giỗ Tổ Hùng Vương: 01 ngày (ngày 10 tháng 3 âm lịch);\n- Tết cổ truyền dân tộc và Quốc khánh của nước họ (đối với người lao động nước ngoài).\n\nNếu bạn muốn biết ngày nghỉ lễ cụ thể, vui lòng cung cấp thông tin về ngày hiện tại hoặc ngày bạn muốn biết."
+      },
+      {
+        "role": "user",
+        "content": "làm thêm tăng ca được bao nhiêu tiền"
+      },
+      {
+        "role": "assistant",
+        "content": "Theo Điều 97, Bộ Luật Lao Động 2019, người lao động làm thêm giờ được trả lương theo quy định sau:\n\n- Người lao động làm thêm giờ vào ban đêm thì ngoài việc trả lương theo quy định tại khoản 1 và khoản 2 Điều này, người lao động còn được trả thêm 20% tiền lương tính theo đơn giá tiền lương hoặc tiền lương theo công việc làm vào ban ngày của ngày làm việc bình thường hoặc của ngày nghỉ hằng tuần hoặc của ngày nghỉ lễ, tết.\n\nTuy nhiên, để biết cụ thể số tiền tăng ca, chúng ta cần biết thêm thông tin về đơn giá tiền lương hoặc tiền lương theo công việc của người lao động.\n\nNếu bạn muốn biết thông tin cụ thể, vui lòng cung cấp thông tin về đơn giá tiền lương hoặc tiền lương theo công việc của người lao động."
+      },
+      {
+        "role": "user",
+        "content": "AI là gì"
+      },
+      {
+        "role": "assistant",
+        "content": "Theo tài liệu cung cấp, \"AI\" không được định nghĩa rõ ràng. Tuy nhiên, dựa trên ngữ cảnh, có thể hiểu \"AI\" là \"Người làm việc không có quan hệ lao động\" được định nghĩa tại khoản 6, Điều 3, Bộ Luật Lao Động 2019.\n\nNgười làm việc không có quan hệ lao động là người làm việc không trên cơ sở thuê mướn bằng hợp đồng lao động."
+      },
+      {
+        "role": "user",
+        "content": "Bú tiền tăng ca của nhân viên phạt thế nào?"
+      },
+      {
+        "role": "assistant",
+        "content": "Xin lỗi, văn kiện luật hiện tại không có nhắc đến vấn đề này, tôi không thể trả lời.\n\nTuy nhiên, có thể hiểu rằng hành vi bú tiền tăng ca của nhân viên có thể được coi là hành vi vi phạm kỷ luật lao động, cụ thể là hành vi \"Trộm cắp tài sản của người sử dụng lao động\" hoặc \"Trộm cắp tài sản của người khác\".\n\nTheo Điều 163, Bộ Luật Lao Động 2019, người sử dụng lao động có quyền xử lý kỷ luật đối với người lao động vi phạm kỷ luật lao động. Nếu hành vi bú tiền tăng ca của nhân viên được coi là hành vi vi phạm kỷ luật lao động, người sử dụng lao động có thể áp dụng các hình thức kỷ luật như:\n\n- Kéo dài thời hạn nâng lương\n- Giảm thời hạn nâng lương\n- Cách chức\n- Xử lý kỷ luật khác theo quy định của pháp luật.\n\nTuy nhiên, để xác định cụ thể hình thức kỷ luật và mức độ xử lý, cần xem xét các yếu tố như mức độ nghiêm trọng của hành vi, tính chất của hành vi, và các quy định cụ thể của người sử dụng lao động."
+      },
+      {
+        "role": "user",
+        "content": "chi tiết điều 163"
+      },
+      {
+        "role": "assistant",
+        "content": "Điều 163, Bộ Luật Lao Động 2019 quy định về nghĩa vụ của người sử dụng lao động khi sử dụng lao động là người giúp việc gia đình như sau:\n\n1. Thực hiện đầy đủ thỏa thuận đã giao kết trong hợp đồng lao động.\n\n2. Trả cho người giúp việc gia đình khoản tiền bảo hiểm xã hội, bảo hiểm y tế theo quy định của pháp luật để người lao động chủ động tham gia bảo hiểm xã hội, bảo hiểm y tế.\n\n3. Tôn trọng danh dự, nhân phẩm của người giúp việc gia đình.\n\n4. Bố trí chỗ ăn, ở hợp vệ sinh cho người giúp việc gia đình nếu có thỏa thuận.\n\n5. Tạo cơ hội cho người giúp việc gia đình được tham gia học văn hóa, giáo dục nghề nghiệp.\n\n6. Trả tiền tàu xe đi đường khi người giúp việc gia đình thôi việc về nơi cư trú, trừ trường hợp người giúp việc gia đình chấm dứt hợp đồng lao động trước thời hạn.\n\nĐiều này không liên quan đến việc bú tiền tăng ca của nhân viên."
+      }
+    ]
+  }
+}

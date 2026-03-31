@@ -36,8 +36,12 @@ HISTORY_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "chat_histo
 
 def _load_all_sessions():
     if os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            # `utf-8-sig` gracefully handles files that include a UTF-8 BOM.
+            with open(HISTORY_FILE, "r", encoding="utf-8-sig") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            return {}
     return {}
 
 
